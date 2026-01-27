@@ -4,11 +4,13 @@ require __DIR__ . "/../services/config.php";
 
 if ($_SERVER["REQUEST_METHOD"] !== "GET") {
     http_response_code(405);
-    echo json_encode(["Error" => "Method not allowed"]);
+    echo json_encode(["Error" => "Method not allowed"], JSON_UNESCAPED_UNICODE);
     exit();
 }
 
-$stmt = $conn->query("
+// สมมติว่า $conn = pg_connect(...) แล้ว
+
+$sql = "
     SELECT
         m.monitor_id,
         d.divice_name,
@@ -20,7 +22,19 @@ $stmt = $conn->query("
         ON m.device_id = d.device_id
     LEFT JOIN page_data_manage_datax x
         ON m.datax_id = x.datax_id
-");
+";
 
-$data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$result = pg_query($conn, $sql);
+
+if (!$result) {
+    http_response_code(500);
+    echo json_encode(
+        ["Error" => pg_last_error($conn)],
+        JSON_UNESCAPED_UNICODE
+    );
+    exit();
+}
+
+$data = pg_fetch_all($result) ?: [];
+
 echo json_encode($data, JSON_UNESCAPED_UNICODE);
