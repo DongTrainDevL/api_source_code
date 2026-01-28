@@ -11,19 +11,9 @@ if ($_SERVER["REQUEST_METHOD"] !== "GET") {
 // $conn = pg_connect(...);  // สมมติว่าคุณต่อไว้แล้ว
 
 $sql = "
-    SELECT 
-    n.id,
-    n.name,
-    n.label,
-    d.value
-FROM names_table n
-LEFT JOIN datas_table d 
-    ON d.name_table_id = n.id
-WHERE n.id IN (10,14,16,15)
-  AND d.name_table_id IN (10,14,15,16)
-  ORDER BY id ASC ;
-
-";
+    SELECT * FROM shrimp_price_event 
+    
+        ";
 
 $result = pg_query($conn, $sql);
 
@@ -36,5 +26,3 @@ if (!$result) {
 $data = pg_fetch_all($result) ?: [];
 
 echo json_encode($data, JSON_UNESCAPED_UNICODE);
-
-
