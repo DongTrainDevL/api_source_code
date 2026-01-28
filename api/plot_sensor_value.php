@@ -13,7 +13,7 @@ $result = pg_query($conn,
 "
     SELECT * 
     FROM page_data_manage_monitor
-    WHERE group_id = 1 AND device_id IN (3,1)
+    WHERE group_id = 1 AND device_id IN (1,2,3,4)
 
 ");
 
