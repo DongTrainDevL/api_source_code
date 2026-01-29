@@ -8,12 +8,23 @@ if ($_SERVER["REQUEST_METHOD"] !== "GET") {
     exit();
 }
 
-// $conn = pg_connect(...);  // สมมติว่าคุณต่อไว้แล้ว
 
 $sql = "
-    SELECT * FROM shrimp_price_event 
+SELECT
+    e.id,
+    e.event_price,
+    e.event_month,
+    d.value,
+    d.start_day,
+    d.end_day
+FROM shrimp_price_event e
+LEFT JOIN datas_table d
+    ON d.name_table_id = e.data_table_id
+ORDER BY e.id DESC;
+
+
+    ";
     
-        ";
 
 $result = pg_query($conn, $sql);
 
