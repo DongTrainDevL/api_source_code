@@ -17,10 +17,10 @@ SELECT
     d.value,
     d.start_day,
     d.end_day
-FROM shrimp_price_event e
-LEFT JOIN datas_table d
-    ON d.name_table_id = e.data_table_id
-ORDER BY e.id DESC;
+    FROM shrimp_price_event e
+    LEFT JOIN datas_table d
+        ON d.name_table_id = e.data_table_id
+    ORDER BY e.id DESC;
 
 
     ";
