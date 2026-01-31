@@ -16,7 +16,14 @@ try {
     // }
   
     $sensors = $input["sensors"];
-    $sql = " SELECT * FROM page_data_manage_monitor WHERE monitor_name = ANY($1)";
+    $sql = " 
+    WITH input_ids AS (
+    SELECT unnest($1::text[]) AS monitor_name ) 
+    SELECT p.*,l.*
+    FROM page_data_manage_monitor p 
+    LEFT JOIN datas_log l  
+    ";
+    
 
     $result = pg_query_params(
         $conn, 

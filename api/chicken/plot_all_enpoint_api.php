@@ -1,61 +1,72 @@
-
-<?php 
+<?php
 header("Content-Type: application/json; charset=utf-8");
-require __DIR__ . "/../../services/config.php";   
+require __DIR__ . "/../../services/config.php";
 
-if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-    http_response_code(405);
-    echo json_encode(["message" => "POST only"], JSON_UNESCAPED_UNICODE);
-    exit();
+$parent_id = $_POST['requestApi'] ?? null;
+
+if (empty($parent_id)) {
+  echo json_encode(["status"=>"error","message"=>"requestApi is required"], JSON_UNESCAPED_UNICODE);
+  exit;
 }
 
-try {
-    $input = json_decode(file_get_contents("php://input"), true);
-    $sensors = $input["requestApi"];
-    if (!isset($input["requestApi"])) {
-        throw new Exception ("sensor is required");
-    }
-    
-    
-    $sql = "
-        WITH input_ids AS (
-        SELECT unnest($1::int[]) AS id
-        )
-            SELECT
-            n.*,
-            d.*         
-            FROM names_table n
-            LEFT JOIN datas_table d
-            ON d.name_table_id = n.id
-            WHERE n.id IN (SELECT id FROM input_ids)
-            OR n.child_of_table_id IN (SELECT id FROM input_ids)
-            ORDER BY n.id ASC;
+/* ดึงตารางแม่ */
+$sql_parent = "SELECT * FROM names_table WHERE id = $1";
+$res_parent = pg_query_params($conn, $sql_parent, [$parent_id]);
+$parent = pg_fetch_assoc($res_parent);
 
-";
+if (!$parent) {
+  echo json_encode(["status"=>"error","message"=>"parent not found"], JSON_UNESCAPED_UNICODE);
+  exit;
+}
+
+/*  ดึง columns (ลูกของ parent) */
+$sql_cols = "SELECT * FROM names_table WHERE child_of_table_id = $1 ORDER BY id ASC";
+$res_cols = pg_query_params($conn, $sql_cols, [$parent_id]);
+
+$result = $parent;
+$result["columns"] = [];
+/* จะเก็บ logs แยกตาม column id: logs */
+$group = [];
+while ($col = pg_fetch_assoc($res_cols)) {
+  $col_id = $col["id"];
+  $result["columns"][] = $col;
+
+  /*  ดึง logs ของแต่ละ column */
+  $sql_logs = "SELECT * FROM datas_table WHERE name_table_id = $1 ORDER BY id DESC";
+  $res_logs = pg_query_params($conn, $sql_logs, [$col_id]);
+  $logs = pg_fetch_all($res_logs) ?: [];
+
+  /* แยกเป็น logs{column_id} */
+  $group = [];
+
+  foreach ($logs as $log) {
+  $key = $log['second_label'] ?? 'อื่นๆ';
+  if (!isset($groups[$key])) $groups[$key] = [];
+
+  /* ตัด filed ให้ fontend */
+  $item = [
+    "id" => $log["id"],
+    "start_day" => $log["start_day"],
+    "end_day" => $log["end_day"],
+    "value" => $log["value"],
+
+  ];
+
+  $groups[$key][] = $item;
+}
 
 
-    $result = pg_query_params(
-        $conn, 
-        $sql,  ['{' .implode(',', $sensors). '}']
-    );
+$column["Columns_in_Table"] = $groups;
+// $result["logs".$col_id] = $logs;
 
-    // echo json_encode([
-    //     "chickeType" => is_object($result)
-    // ]);
+  // logs รวม:
+//   $result["logs_by_column"][$col_id] = $logs;
+}
 
-    if(!$result) {
-        throw new Expection (pg_last_error($conn));
-    }
+echo json_encode([
+  "status" => "success",
+  "data" => $column,
+// echo "key is : ".$res_id;
+], JSON_UNESCAPED_UNICODE);
 
-    $data = pg_fetch_all($result) ;
-    
-    echo json_encode([
-       "status" => "success", 
-       "reponse_data" => $data ? : []
-    ],null);
-
-} catch (Exception $error) {
-    ["Error" => "Expection Error", 
-    "message" => $error->getMessage()];
-
-};
+pg_close($conn);
